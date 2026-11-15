@@ -9,14 +9,23 @@ let wrong=JSON.parse(localStorage.getItem('prope_wrong')||'[]');let seen=JSON.pa
 $('#total').textContent=DATA.length;function update(){ $('#mistakes').textContent=wrong.length;localStorage.setItem('prope_wrong',JSON.stringify(wrong));localStorage.setItem('prope_seen',JSON.stringify(seen))}update();
 $('#section').innerHTML='<option value="all">Všechny okruhy</option>'+sections.map(s=>`<option>${esc(s)}</option>`).join('');
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
-function switchMode(m){mode=m;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('#session').classList.add('hidden');$('#setup').classList.toggle('hidden',!['learn','exam','errors'].includes(m));$('#bank').classList.toggle('hidden',m!=='bank');$('#workshop').classList.toggle('hidden',m!=='workshop');$('#modeTitle').textContent={learn:'Procvičování všech témat',exam:'Simulace ostrého testu',errors:'Opakování chybných odpovědí'}[m]||'';$('#count').parentElement.style.display='';$('#section').parentElement.style.display=m==='exam'?'none':'';$('#setupNote').textContent=m==='exam'?`${examQuestions().length} otázek v celé databázi. U otázek bez variant A–D odpověz vlastními slovy a ohodnoť se po zobrazení řešení.`:m==='errors'?'Procvičování otázek, které jsi dříve nezvládl/a.':'Všechny dostupné položky včetně těch, které vyžadují obrazové přednášky.';updateExamStats();if(m==='bank')renderBank();if(m==='workshop')renderWorkshop()}
+function switchMode(m){mode=m;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('#session').classList.add('hidden');$('#setup').classList.toggle('hidden',!['learn','exam','errors'].includes(m));$('#bank').classList.toggle('hidden',m!=='bank');$('#workshop').classList.toggle('hidden',m!=='workshop');$('#modeTitle').textContent={learn:'Procvičování všech témat',exam:'Simulace ostrého testu',errors:'Opakování chybných odpovědí'}[m]||'';$('#count').parentElement.style.display='';$('#section').parentElement.style.display=m==='exam'?'none':'';$('#setupNote').textContent=m==='exam'?`${examQuestions().length} otázek v celé databázi. U většiny otázek jsou čtyři možnosti A–D. U automaticky doplněných variant jde o orientační trénink, nikoli odborně ověřené distraktory.`:m==='errors'?'Procvičování otázek, které jsi dříve nezvládl/a.':'Všechny dostupné položky včetně těch, které vyžadují obrazové přednášky.';updateExamStats();if(m==='bank')renderBank();if(m==='workshop')renderWorkshop()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchMode(b.dataset.mode));
 function pool(){let a=DATA.filter(x=>$('#section').value==='all'||x.section===$('#section').value);if(mode==='errors')a=a.filter(x=>wrong.includes(x.id));if(mode==='exam')a=examQuestions();return $('#mix').checked?shuffle(a):a}
 $('#start').onclick=()=>{queue=pool();if($('#count').value!=='all')queue=queue.slice(0,+$('#count').value);if(!queue.length){alert('V tomto výběru nejsou žádné otázky.');return}index=0;answers=[];started=Date.now();$('#session').classList.remove('hidden');renderQuestion();$('#session').scrollIntoView({behavior:'smooth',block:'start'})};
 function optionsFor(q){
-  // Only hand-authored, clinically coherent distractors. Never mix random answers from other questions.
-  if(!q.a||q.image||!CURATED[q.id])return [];
+  // Prefer hand-authored distractors; for missing sets, use same-topic answer alternatives as provisional training distractors.
+  if(!q.a||q.image)return [];
   let arr=CURATED[q.id];
+  if(!arr){
+    // Fallback uses distinct answers from the same topic, avoiding identical and overlapping strings.
+    const normText=x=>String(x).toLocaleLowerCase('cs').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+    const target=normText(q.a);
+    const candidates=shuffle(DATA.filter(x=>x.id!==q.id&&x.section===q.section&&x.a&&!x.image).map(x=>x.a)).filter(a=>{const n=normText(a);return n&&n!==target&&!n.includes(target)&&!target.includes(n)});
+    const chosen=[];for(const a of candidates){if(!chosen.some(b=>normText(a)===normText(b))){chosen.push(a);if(chosen.length===3)break}}
+    if(chosen.length<3)return [];
+    return shuffle([q.a,...chosen]);
+  }
   const norm=x=>x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
   if(arr.length!==4||new Set(arr.map(norm)).size!==4||!arr.some(x=>norm(x)===norm(q.a)))return [];
   return shuffle(arr);
