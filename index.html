@@ -6,7 +6,7 @@ const CURATED={"P98":["akustický stín","reverberační artefakt","artefakt zrc
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sections=[...new Set(DATA.map(x=>x.section))];let mode='learn',queue=[],index=0,answers=[],started=0,shown=false,selected=null;
 let wrong=JSON.parse(localStorage.getItem('prope_wrong')||'[]');let seen=JSON.parse(localStorage.getItem('prope_seen')||'[]');
-$('#total').textContent=DATA.length;function update(){ $('#mistakes').textContent=wrong.length;localStorage.setItem('prope_wrong',JSON.stringify(wrong));localStorage.setItem('prope_seen',JSON.stringify(seen))}update();
+$('#total').textContent=DATA.length;function update(){localStorage.setItem('prope_wrong',JSON.stringify(wrong));localStorage.setItem('prope_seen',JSON.stringify(seen))}update();
 $('#section').innerHTML='<option value="all">Všechny okruhy</option>'+sections.map(s=>`<option>${esc(s)}</option>`).join('');
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
 function switchMode(m){mode=m;document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('#session').classList.add('hidden');$('#setup').classList.toggle('hidden',!['learn','exam','errors'].includes(m));$('#bank').classList.toggle('hidden',m!=='bank');$('#workshop').classList.toggle('hidden',m!=='workshop');$('#modeTitle').textContent={learn:'Procvičování všech témat',exam:'Simulace ostrého testu',errors:'Opakování chybných odpovědí'}[m]||'';$('#count').parentElement.style.display='';$('#section').parentElement.style.display=m==='exam'?'none':'';$('#setupNote').textContent=m==='exam'?`${examQuestions().length} otázek v celé databázi. U většiny otázek jsou čtyři možnosti A–D. U automaticky doplněných variant jde o orientační trénink, nikoli odborně ověřené distraktory.`:m==='errors'?'Procvičování otázek, které jsi dříve nezvládl/a.':'Všechny dostupné položky včetně těch, které vyžadují obrazové přednášky.';updateExamStats();if(m==='bank')renderBank();if(m==='workshop')renderWorkshop()}
@@ -22,7 +22,7 @@ function optionsFor(q){
   return shuffle(arr);
 }
 function examQuestions(){return DATA.filter(q=>optionsFor(q).length===4)}
-function updateExamStats(){const n=examQuestions().length;$('#examAvailable').textContent=n;$('#examSelected').textContent=$('#count').value==='all'?n:Math.min(n,+$('#count').value)}
+function updateExamStats(){const n=examQuestions().length;const selected=$('#count').value==='all'?n:Math.min(n,+$('#count').value);$('#examAvailable').textContent=n;$('#examSelected').textContent=selected;$('#mistakes').textContent=selected}
 $('#count').addEventListener('change',updateExamStats);
 updateExamStats();
 let opts=[];
